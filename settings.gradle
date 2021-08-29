@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Recordio"
 include ':app'
+include ':compose-mdi-icons'

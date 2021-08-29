@@ -10,6 +10,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Recordio">
         <activity
+            android:name=".CallRecordingActivity"
+            android:exported="true"
+            android:label="@string/title_activity_call_recording"
+            android:theme="@style/Theme.Recordio.NoActionBar" />
+        <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"

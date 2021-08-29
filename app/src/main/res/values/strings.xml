@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Recordio</string>
+    <string name="title_activity_call_recording">CallRecordingActivity</string>
 </resources>

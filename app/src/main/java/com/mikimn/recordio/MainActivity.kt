@@ -12,7 +12,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -20,6 +20,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.mikimn.recordio.ui.theme.RecordioTheme
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -28,27 +32,18 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RecordioTheme {
-                val scaffoldState = rememberScaffoldState()
-                val snackbarCoroutineScope = rememberCoroutineScope()
+            RecordioTheme(darkTheme = false) {
+                val navController = rememberNavController()
 
-                Scaffold(
-                    scaffoldState = scaffoldState,
-                    topBar = { TopBar("Recordio") }
-                ) { innerPadding ->
-                    // A surface container using the 'background' color from the theme
-                    Surface(
-                        modifier = Modifier.padding(innerPadding),
-                        color = MaterialTheme.colors.background
-                    ) {
-                        RecordingList(
-                            recordings = dummyCallRecordings(100)
-                        ) { _, recording ->
-                            snackbarCoroutineScope.launch {
-                                scaffoldState.snackbarHostState
-                                    .showSnackbar("Call recording ${recording.filePath} clicked")
-                            }
-                        }
+                NavHost(navController = navController, startDestination = "main") {
+                    composable("main") { MainScreen(navController) }
+                    composable(
+                        "recording/{recordingId}",
+                    ) { backStackEntry ->
+                        CallRecordingScreen(
+                            navController,
+                            backStackEntry.arguments?.getString("recordingId")?.toInt() ?: -1
+                        )
                     }
                 }
             }
@@ -57,9 +52,43 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TopBar(title: String) {
+fun MainScreen(navController: NavController) {
+    val scaffoldState = rememberScaffoldState()
+    val snackbarCoroutineScope = rememberCoroutineScope()
+
+    Scaffold(
+        scaffoldState = scaffoldState,
+        topBar = {
+            TopBar("Recordio")
+        }
+    ) { innerPadding ->
+        // A surface container using the 'background' color from the theme
+        Surface(
+            modifier = Modifier.padding(innerPadding),
+            color = MaterialTheme.colors.background
+        ) {
+            RecordingList(
+                recordings = dummyCallRecordings(100)
+            ) { _, recording ->
+                snackbarCoroutineScope.launch {
+                    navController.navigate("recording/${recording.id}")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TopBar(title: String, onBack: (() -> Unit)? = null) {
     TopAppBar(
-        title = { Text(text = title) }
+        title = { Text(text = title) },
+        navigationIcon = onBack?.let {
+            {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Navigate Back")
+                }
+            }
+        }
     )
 }
 
@@ -76,6 +105,29 @@ fun RecordingList(
             RecordingItem(recording) { onClick(index, recording) }
         }
     }
+}
+
+
+@Composable
+fun CallType.Icon() {
+    return when {
+        this == CallType.INCOMING -> Icon(
+            Icons.Default.CallMade,
+            contentDescription = "Incoming Call",
+            tint = androidx.compose.ui.graphics.Color.Green
+        )
+        this == CallType.OUTGOING -> Icon(
+            Icons.Default.CallReceived,
+            contentDescription = "Outgoing Call",
+            tint = androidx.compose.ui.graphics.Color.Blue
+        )
+        else -> Icon(
+            Icons.Default.CallMissed,
+            contentDescription = "Missed Call",
+            tint = androidx.compose.ui.graphics.Color.Blue
+        )
+    }
+
 }
 
 
@@ -100,7 +152,7 @@ fun RecordingItem(
                     .background(color = MaterialTheme.colors.background),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Call, contentDescription = "Recording Icon")
+                recording.callType.Icon()
             }
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(text = recording.source)
@@ -118,12 +170,20 @@ fun RecordingItem(
 @Composable
 fun RecordingItemPreview() {
     RecordingItem(
-        recording = CallRecording(
-            "+1-202-555-0108",
-            Duration.ofMinutes(5).plus(Duration.ofSeconds(23)),
-            "some-file.mp4"
-        )
+        recording = callRecordingFromId(0)
     )
+}
+
+
+fun Duration.timerFormatted(): String {
+    val hours = toHours().toString().padStart(2, '0')
+    val minutes = toMinutes().toString().padStart(2, '0')
+    val minutesPart = (toMinutes() % 60).toString().padStart(2, '0')
+    val seconds = (seconds % 60).toString().padStart(2, '0')
+    if (toMinutes() < 60) {
+        return "${minutes}:${seconds}"
+    }
+    return "${hours}:${minutesPart}:${seconds}"
 }
 
 
