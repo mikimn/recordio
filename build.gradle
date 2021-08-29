@@ -2,8 +2,12 @@
 buildscript {
     ext {
         compose_version = "1.0.1"
+        compose_runtime_version = "1.1.0-alpha02"
         nav_version = "2.3.5"
         room_version = "2.3.0"
+        lifecycle_version = "2.4.0-alpha03"
+        arch_version = "2.1.0"
+        accompanist_version = "0.17.0"
     }
     repositories {
         google()

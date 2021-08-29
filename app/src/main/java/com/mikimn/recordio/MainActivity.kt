@@ -3,6 +3,7 @@ package com.mikimn.recordio
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,8 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,24 +27,39 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.mikimn.recordio.db.AppDatabase
 import com.mikimn.recordio.ui.theme.RecordioTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.time.Duration
 
 class MainActivity : ComponentActivity() {
+
+    private val applicationScope = CoroutineScope(SupervisorJob())
+    private val recordingsViewModel: CallRecordingsViewModel by viewModels {
+        CallRecordingsViewModelFactory(
+            CallRecordingsRepository(
+                AppDatabase.instance(applicationContext, applicationScope).callRecordingsDao()
+            )
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             RecordioTheme(darkTheme = false) {
                 val navController = rememberNavController()
 
                 NavHost(navController = navController, startDestination = "main") {
-                    composable("main") { MainScreen(navController) }
+                    composable("main") { MainScreen(navController, recordingsViewModel) }
                     composable(
                         "recording/{recordingId}",
                     ) { backStackEntry ->
                         CallRecordingScreen(
                             navController,
+                            recordingsViewModel,
                             backStackEntry.arguments?.getString("recordingId")?.toInt() ?: -1
                         )
                     }
@@ -52,9 +70,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MainScreen(navController: NavController) {
+fun MainScreen(
+    navController: NavController,
+    recordingsViewModel: CallRecordingsViewModel
+) {
     val scaffoldState = rememberScaffoldState()
     val snackbarCoroutineScope = rememberCoroutineScope()
+    val recordings by recordingsViewModel.recordings.observeAsState(emptyList())
 
     Scaffold(
         scaffoldState = scaffoldState,
@@ -67,9 +89,7 @@ fun MainScreen(navController: NavController) {
             modifier = Modifier.padding(innerPadding),
             color = MaterialTheme.colors.background
         ) {
-            RecordingList(
-                recordings = dummyCallRecordings(100)
-            ) { _, recording ->
+            RecordingList(recordings = recordings) { _, recording ->
                 snackbarCoroutineScope.launch {
                     navController.navigate("recording/${recording.id}")
                 }

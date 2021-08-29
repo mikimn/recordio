@@ -4,60 +4,78 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
 import com.mikimn.recordio.layout.AudioPlayer
+import com.mikimn.recordio.phone.launchCall
 
 
 @Composable
 fun CallRecordingScreen(
     navController: NavController,
+    recordingsViewModel: CallRecordingsViewModel,
     recordingId: Int
 ) {
     val scaffoldState = rememberScaffoldState()
-    val callRecording = callRecordingFromId(recordingId)
+    var recordingState: CallRecording? by remember { mutableStateOf(null) }
 
-    Scaffold(
-        scaffoldState = scaffoldState,
-        topBar = {
-            TopBar("Details") {
-                navController.navigateUp()
+    LaunchedEffect(key1 = recordingId) {
+        recordingState = recordingsViewModel.findById(recordingId)
+    }
+
+    recordingState?.let { callRecording ->
+        val context = LocalContext.current
+        Scaffold(
+            scaffoldState = scaffoldState,
+            topBar = {
+                TopBar("Details") {
+                    navController.navigateUp()
+                }
             }
-        }
-    ) { innerPadding ->
-        // A surface container using the 'background' color from the theme
-        Surface(
-            modifier = Modifier.padding(innerPadding),
-            color = MaterialTheme.colors.background
-        ) {
-            Column {
-                RecordingHeader(callRecording)
-                Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
-                Text(
-                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 18.dp),
-                    text = "Playback",
-                    style = MaterialTheme.typography.h5.copy(color = Color.Gray)
-                )
-                AudioPlayer(callRecording.duration)
-                Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
-                Text(
-                    modifier = Modifier.padding(vertical = 8.dp, horizontal = 18.dp),
-                    text = "Actions",
-                    style = MaterialTheme.typography.h5.copy(color = Color.Gray)
-                )
-                RecordingActions(callRecording) { recording, action ->
-                    when (action) {
-                        RecordingAction.CALL -> TODO()
-                        RecordingAction.CONTACT_DETAILS -> TODO()
-                        RecordingAction.DELETE_RECORDING -> TODO()
+        ) { innerPadding ->
+            // A surface container using the 'background' color from the theme
+            Surface(
+                modifier = Modifier.padding(innerPadding),
+                color = MaterialTheme.colors.background
+            ) {
+                Column {
+                    RecordingHeader(callRecording)
+                    Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
+                    Text(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 18.dp),
+                        text = "Playback",
+                        style = MaterialTheme.typography.h5.copy(color = Color.Gray)
+                    )
+                    AudioPlayer(callRecording.duration)
+                    Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
+                    Text(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 18.dp),
+                        text = "Actions",
+                        style = MaterialTheme.typography.h5.copy(color = Color.Gray)
+                    )
+                    RecordingActions(callRecording) { recording, action ->
+                        when (action) {
+                            RecordingAction.CALL -> launchCall(context, recording.source)
+                            RecordingAction.CONTACT_DETAILS -> TODO()
+                            RecordingAction.DELETE_RECORDING -> {
+                                recordingsViewModel.delete(recording)
+                                navController.navigateUp()
+                            }
+                        }
                     }
                 }
             }
@@ -82,14 +100,28 @@ enum class RecordingAction {
 }
 
 
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun RecordingActions(
     callRecording: CallRecording,
     onAction: (recording: CallRecording, action: RecordingAction) -> Unit = { _, _ -> }
 ) {
+    val callPermissionState = rememberPermissionState(android.Manifest.permission.CALL_PHONE)
+    var shouldPerformCallAction by remember { mutableStateOf(false) }
     Column {
+        LaunchedEffect(callPermissionState.hasPermission) {
+            if (shouldPerformCallAction && callPermissionState.hasPermission) {
+                onAction(callRecording, RecordingAction.CALL)
+                shouldPerformCallAction = false
+            }
+        }
         ButtonTile(icon = Icons.Default.Call, text = "Call") {
-            onAction(callRecording, RecordingAction.CALL)
+            if (callPermissionState.hasPermission) {
+                onAction(callRecording, RecordingAction.CALL)
+            } else {
+                shouldPerformCallAction = true
+                callPermissionState.launchPermissionRequest()
+            }
         }
         ButtonTile(icon = Icons.Default.AccountCircle, text = "Contact Details") {
             onAction(callRecording, RecordingAction.CONTACT_DETAILS)
@@ -142,6 +174,7 @@ fun PreviewRecordingPlayback() {
 }
 
 
+@ExperimentalPermissionsApi
 @Preview(showBackground = true)
 @Composable
 fun PreviewRecordingActions() {

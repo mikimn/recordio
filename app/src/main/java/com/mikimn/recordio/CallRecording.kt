@@ -1,5 +1,9 @@
 package com.mikimn.recordio
 
+import androidx.lifecycle.*
+import androidx.room.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
 import java.time.Duration
 import kotlin.math.abs
 
@@ -7,17 +11,99 @@ import kotlin.math.abs
 enum class CallType {
     INCOMING,
     OUTGOING,
-    MISSED
+    MISSED;
+
+    class Converter {
+        @TypeConverter
+        fun toCallType(type: Int) = values()[type]
+
+        @TypeConverter
+        fun fromCallType(type: CallType): Int = type.ordinal
+    }
 }
 
 
+class DurationConverter {
+    @TypeConverter
+    fun toDuration(durationSeconds: Long) = Duration.ofSeconds(durationSeconds)
+
+    @TypeConverter
+    fun fromDuration(duration: Duration) = duration.seconds
+}
+
+
+@Entity(tableName = "recordings")
+@TypeConverters(CallType.Converter::class, DurationConverter::class)
 data class CallRecording(
-    val id: Int,
-    val source: String,
-    val callType: CallType,
-    val duration: Duration,
-    val filePath: String
+    @PrimaryKey val id: Int,
+    @ColumnInfo(name = "source") val source: String,
+    @ColumnInfo(name = "call_type") val callType: CallType,
+    @ColumnInfo(name = "duration") val duration: Duration,
+    @ColumnInfo(name = "file_path") val filePath: String
 )
+
+
+@Dao
+interface CallRecordingDao {
+    @Query("SELECT * FROM recordings")
+    fun list(): Flow<List<CallRecording>>
+
+    @Query("SELECT * FROM recordings WHERE id == :id")
+    suspend fun get(id: Int): List<CallRecording>
+
+    @Insert
+    suspend fun insert(callRecording: CallRecording)
+
+    @Delete
+    suspend fun delete(callRecording: CallRecording)
+
+    @Query("DELETE FROM recordings")
+    suspend fun deleteAll()
+}
+
+
+class CallRecordingsRepository(private val dao: CallRecordingDao) {
+    val recordings: Flow<List<CallRecording>> = dao.list()
+
+    suspend fun findById(id: Int): CallRecording =
+        dao.get(id)
+            .getOrNull(0) ?: throw IllegalArgumentException("No recording with id $id found")
+
+    suspend fun insert(callRecording: CallRecording) = dao.insert(callRecording)
+
+    suspend fun delete(callRecording: CallRecording) = dao.delete(callRecording)
+}
+
+
+class CallRecordingsViewModel(
+    private val repository: CallRecordingsRepository
+) : ViewModel() {
+
+    val recordings: LiveData<List<CallRecording>> = repository.recordings.asLiveData()
+
+    suspend fun findById(id: Int) = repository.findById(id)
+
+    fun insert(callRecording: CallRecording) = viewModelScope.launch {
+        repository.insert(callRecording)
+    }
+
+    fun delete(callRecording: CallRecording) = viewModelScope.launch {
+        repository.delete(callRecording)
+    }
+}
+
+
+class CallRecordingsViewModelFactory(
+    private val repository: CallRecordingsRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CallRecordingsViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return CallRecordingsViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
 
 
 fun dummyCallRecordings(size: Int): List<CallRecording> {
