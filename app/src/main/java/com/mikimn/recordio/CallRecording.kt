@@ -1,12 +1,10 @@
 package com.mikimn.recordio
-
+import java.time.Duration
+import kotlin.math.abs
 import androidx.lifecycle.*
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import java.time.Duration
-import kotlin.math.abs
-
 
 enum class CallType {
     INCOMING,
@@ -22,6 +20,19 @@ enum class CallType {
     }
 }
 
+fun callRecordingFromId(id: Int): CallRecording {
+    return CallRecording(
+        id,
+        "+1-202-555-0108",
+        CallType.values()[abs(id) % CallType.values().size],
+        Duration.ofMinutes(5).plus(Duration.ofSeconds(23)),
+        "some-file.mp4"
+    )
+}
+
+fun dummyCallRecordings(size: Int): List<CallRecording> {
+    return (0 until size).map { callRecordingFromId(it) }
+}
 
 class DurationConverter {
     @TypeConverter
@@ -103,20 +114,4 @@ class CallRecordingsViewModelFactory(
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
-}
-
-
-fun dummyCallRecordings(size: Int): List<CallRecording> {
-    return (0 until size).map { callRecordingFromId(it) }
-}
-
-
-fun callRecordingFromId(id: Int): CallRecording {
-    return CallRecording(
-        id,
-        "+1-202-555-0108",
-        CallType.values()[abs(id) % CallType.values().size],
-        Duration.ofMinutes(5).plus(Duration.ofSeconds(23)),
-        "some-file.mp4"
-    )
 }

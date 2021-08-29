@@ -147,7 +147,6 @@ fun CallType.Icon() {
             tint = androidx.compose.ui.graphics.Color.Blue
         )
     }
-
 }
 
 
