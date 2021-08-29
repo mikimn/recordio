@@ -1,0 +1,2 @@
+com/mikimn/compose/material/icons/BuildConfig.java
+ com.mikimn.compose.material.icons.BuildConfig

@@ -13,6 +13,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CallMade
+import androidx.compose.material.icons.filled.CallMissed
+import androidx.compose.material.icons.filled.CallReceived
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -100,7 +103,7 @@ fun RecordingItem(
                     .background(color = MaterialTheme.colors.background),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Call, contentDescription = "Recording Icon")
+                recording.callType.Icon()
             }
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(text = recording.source)
@@ -118,11 +121,7 @@ fun RecordingItem(
 @Composable
 fun RecordingItemPreview() {
     RecordingItem(
-        recording = CallRecording(
-            "+1-202-555-0108",
-            Duration.ofMinutes(5).plus(Duration.ofSeconds(23)),
-            "some-file.mp4"
-        )
+        recording = callRecordingFromId(0)
     )
 }
 
@@ -140,4 +139,26 @@ fun Duration.humanReadable(): String {
         return "${this.toMinutes()}:${fractionalSeconds} min."
     }
     return "over an hour"
+}
+
+
+@Composable
+fun CallType.Icon() {
+    return when {
+        this == CallType.INCOMING -> Icon(
+            Icons.Default.CallMade,
+            contentDescription = "Incoming Call",
+            tint = androidx.compose.ui.graphics.Color.Green
+        )
+        this == CallType.OUTGOING -> Icon(
+            Icons.Default.CallReceived,
+            contentDescription = "Outgoing Call",
+            tint = androidx.compose.ui.graphics.Color.Blue
+        )
+        else -> Icon(
+            Icons.Default.CallMissed,
+            contentDescription = "Missed Call",
+            tint = androidx.compose.ui.graphics.Color.Blue
+        )
+    }
 }
