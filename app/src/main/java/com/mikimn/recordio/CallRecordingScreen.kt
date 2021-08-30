@@ -108,13 +108,15 @@ fun RecordingActions(
 ) {
     val callPermissionState = rememberPermissionState(android.Manifest.permission.CALL_PHONE)
     var shouldPerformCallAction by remember { mutableStateOf(false) }
-    Column {
-        LaunchedEffect(callPermissionState.hasPermission) {
-            if (shouldPerformCallAction && callPermissionState.hasPermission) {
-                onAction(callRecording, RecordingAction.CALL)
-                shouldPerformCallAction = false
-            }
+
+    LaunchedEffect(callPermissionState.hasPermission) {
+        if (shouldPerformCallAction && callPermissionState.hasPermission) {
+            onAction(callRecording, RecordingAction.CALL)
+            shouldPerformCallAction = false
         }
+    }
+
+    Column {
         ButtonTile(icon = Icons.Default.Call, text = "Call") {
             if (callPermissionState.hasPermission) {
                 onAction(callRecording, RecordingAction.CALL)
