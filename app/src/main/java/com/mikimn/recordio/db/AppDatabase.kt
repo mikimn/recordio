@@ -13,7 +13,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
-@Database(version = 1, entities = [CallRecording::class])
+@Database(version = 2, entities = [CallRecording::class])
 abstract class AppDatabase: RoomDatabase() {
     abstract fun callRecordingsDao(): CallRecordingDao
 
@@ -27,7 +27,8 @@ abstract class AppDatabase: RoomDatabase() {
                     instance = Room.databaseBuilder(
                         applicationContext,
                         AppDatabase::class.java, "default-database"
-                    ).addCallback(DatabaseCallback(scope)).build()
+                    ).fallbackToDestructiveMigration()
+                        .build()
                 }
                 instance!!
             }

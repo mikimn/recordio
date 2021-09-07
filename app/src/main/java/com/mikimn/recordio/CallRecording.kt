@@ -1,4 +1,7 @@
 package com.mikimn.recordio
+import android.content.Context
+import android.net.Uri
+import androidx.documentfile.provider.DocumentFile
 import java.time.Duration
 import kotlin.math.abs
 import androidx.lifecycle.*
@@ -36,7 +39,7 @@ fun dummyCallRecordings(size: Int): List<CallRecording> {
 
 class DurationConverter {
     @TypeConverter
-    fun toDuration(durationSeconds: Long) = Duration.ofSeconds(durationSeconds)
+    fun toDuration(durationSeconds: Long): Duration = Duration.ofSeconds(durationSeconds)
 
     @TypeConverter
     fun fromDuration(duration: Duration) = duration.seconds
@@ -46,7 +49,7 @@ class DurationConverter {
 @Entity(tableName = "recordings")
 @TypeConverters(CallType.Converter::class, DurationConverter::class)
 data class CallRecording(
-    @PrimaryKey val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int,
     @ColumnInfo(name = "source") val source: String,
     @ColumnInfo(name = "call_type") val callType: CallType,
     @ColumnInfo(name = "duration") val duration: Duration,
@@ -80,8 +83,6 @@ class CallRecordingsRepository(private val dao: CallRecordingDao) {
         dao.get(id)
             .getOrNull(0) ?: throw IllegalArgumentException("No recording with id $id found")
 
-    suspend fun insert(callRecording: CallRecording) = dao.insert(callRecording)
-
     suspend fun delete(callRecording: CallRecording) = dao.delete(callRecording)
 }
 
@@ -94,11 +95,8 @@ class CallRecordingsViewModel(
 
     suspend fun findById(id: Int) = repository.findById(id)
 
-    fun insert(callRecording: CallRecording) = viewModelScope.launch {
-        repository.insert(callRecording)
-    }
-
-    fun delete(callRecording: CallRecording) = viewModelScope.launch {
+    fun delete(callRecording: CallRecording, context: Context? = null) = viewModelScope.launch {
+        context?.let { callRecording.documentFile(it) }?.delete()
         repository.delete(callRecording)
     }
 }
@@ -114,4 +112,9 @@ class CallRecordingsViewModelFactory(
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
+}
+
+
+fun CallRecording.documentFile(context: Context): DocumentFile? {
+    return DocumentFile.fromSingleUri(context, Uri.parse(filePath))
 }

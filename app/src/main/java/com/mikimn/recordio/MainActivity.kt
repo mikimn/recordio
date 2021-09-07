@@ -1,5 +1,8 @@
 package com.mikimn.recordio
 
+import android.Manifest
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,13 +17,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -28,11 +30,18 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mikimn.recordio.db.AppDatabase
+import com.mikimn.recordio.device.PermissionGuard
+import com.mikimn.recordio.device.rememberDirectoryPickerState
 import com.mikimn.recordio.ui.theme.RecordioTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.time.Duration
+import android.content.Intent
+import android.provider.Settings
+import com.mikimn.recordio.device.RecordingAccessibilityService
+import com.mikimn.recordio.device.checkAccessibilityService
+
 
 class MainActivity : ComponentActivity() {
 
@@ -67,6 +76,15 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onResume() {
+        super.onResume()
+        if (!checkAccessibilityService<RecordingAccessibilityService>(this)) {
+            val goToSettings = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            goToSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
+            startActivity(goToSettings)
+        }
+    }
 }
 
 @Composable
@@ -78,20 +96,35 @@ fun MainScreen(
     val snackbarCoroutineScope = rememberCoroutineScope()
     val recordings by recordingsViewModel.recordings.observeAsState(emptyList())
 
-    Scaffold(
-        scaffoldState = scaffoldState,
-        topBar = {
-            TopBar("Recordio")
-        }
-    ) { innerPadding ->
-        // A surface container using the 'background' color from the theme
-        Surface(
-            modifier = Modifier.padding(innerPadding),
-            color = MaterialTheme.colors.background
-        ) {
-            RecordingList(recordings = recordings) { _, recording ->
-                snackbarCoroutineScope.launch {
-                    navController.navigate("recording/${recording.id}")
+    PermissionGuard(
+        Manifest.permission.PROCESS_OUTGOING_CALLS,
+        Manifest.permission.READ_PHONE_STATE,
+        Manifest.permission.READ_CALL_LOG,
+        Manifest.permission.RECORD_AUDIO
+    ) {
+        Scaffold(
+            scaffoldState = scaffoldState,
+            floatingActionButton = {
+                val context = LocalContext.current
+                SelectDirectoryFloatingActionButton {
+                    val sharedPrefs =
+                        context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
+                    sharedPrefs.edit().putString("saveFolder", it.toString()).apply()
+                }
+            },
+            topBar = {
+                TopBar("Recordio")
+            }
+        ) { innerPadding ->
+            // A surface container using the 'background' color from the theme
+            Surface(
+                modifier = Modifier.padding(innerPadding),
+                color = MaterialTheme.colors.background
+            ) {
+                RecordingList(recordings = recordings) { _, recording ->
+                    snackbarCoroutineScope.launch {
+                        navController.navigate("recording/${recording.id}")
+                    }
                 }
             }
         }
@@ -108,6 +141,52 @@ fun TopBar(title: String, onBack: (() -> Unit)? = null) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Navigate Back")
                 }
             }
+        }
+    )
+}
+
+
+@Composable
+fun SelectDirectoryFloatingActionButton(onDirectorySelected: (Uri) -> Unit = {}) {
+    // var requestRecording by remember { mutableStateOf(false) }
+    // var isRecording by remember { mutableStateOf(false) }
+    // val recordingRepository = RecordingRepository()
+
+    var requestSelectFile by remember { mutableStateOf(false) }
+
+
+    val filePickerState = rememberDirectoryPickerState()
+    val context = LocalContext.current
+    // val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(filePickerState.uri) {
+        if (requestSelectFile && filePickerState.uri != null) {
+            val uri = filePickerState.directory(context).uri
+            onDirectorySelected(uri)
+            requestSelectFile = false
+//            recordingRepository.startRecording(
+//                context,
+//                filePickerState.directory(context),
+//                MicrophoneType.MIC
+//            )
+//            isRecording = true
+//            requestRecording = false
+        }
+    }
+
+    ExtendedFloatingActionButton(
+        onClick = {
+            if (!requestSelectFile) {
+                filePickerState.launch()
+                requestSelectFile = true
+            }
+        },
+        text = { Text(text = "Select Directory") },
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Folder,
+                contentDescription = "Recording"
+            )
         }
     )
 }
@@ -191,6 +270,13 @@ fun RecordingItemPreview() {
     RecordingItem(
         recording = callRecordingFromId(0)
     )
+}
+
+
+@Preview
+@Composable
+fun DirectoryFABPreview() {
+    SelectDirectoryFloatingActionButton()
 }
 
 

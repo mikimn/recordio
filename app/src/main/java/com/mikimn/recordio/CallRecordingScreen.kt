@@ -1,5 +1,7 @@
 package com.mikimn.recordio
 
+import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
@@ -17,9 +19,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.documentfile.provider.DocumentFile
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberPermissionState
+import com.mikimn.recordio.device.PermissionGuard
 import com.mikimn.recordio.layout.AudioPlayer
 import com.mikimn.recordio.phone.launchCall
 
@@ -33,12 +36,13 @@ fun CallRecordingScreen(
     val scaffoldState = rememberScaffoldState()
     var recordingState: CallRecording? by remember { mutableStateOf(null) }
 
-    LaunchedEffect(key1 = recordingId) {
+    LaunchedEffect(recordingId) {
         recordingState = recordingsViewModel.findById(recordingId)
     }
 
     recordingState?.let { callRecording ->
         val context = LocalContext.current
+        val recordingFile = callRecording.documentFile(context)
         Scaffold(
             scaffoldState = scaffoldState,
             topBar = {
@@ -56,23 +60,26 @@ fun CallRecordingScreen(
                     RecordingHeader(callRecording)
                     Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
                     Text(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 18.dp),
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
                         text = "Playback",
                         style = MaterialTheme.typography.h5.copy(color = Color.Gray)
+                    )
+                    Text(
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        text = recordingFile?.name ?: "Unknown File"
                     )
                     AudioPlayer(callRecording.duration)
                     Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
                     Text(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 18.dp),
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
                         text = "Actions",
                         style = MaterialTheme.typography.h5.copy(color = Color.Gray)
                     )
                     RecordingActions(callRecording) { recording, action ->
                         when (action) {
                             RecordingAction.CALL -> launchCall(context, recording.source)
-                            RecordingAction.CONTACT_DETAILS -> TODO()
                             RecordingAction.DELETE_RECORDING -> {
-                                recordingsViewModel.delete(recording)
+                                recordingsViewModel.delete(recording, context)
                                 navController.navigateUp()
                             }
                         }
@@ -95,7 +102,6 @@ fun RecordingHeader(callRecording: CallRecording) {
 
 enum class RecordingAction {
     CALL,
-    CONTACT_DETAILS,
     DELETE_RECORDING
 }
 
@@ -106,27 +112,12 @@ fun RecordingActions(
     callRecording: CallRecording,
     onAction: (recording: CallRecording, action: RecordingAction) -> Unit = { _, _ -> }
 ) {
-    val callPermissionState = rememberPermissionState(android.Manifest.permission.CALL_PHONE)
-    var shouldPerformCallAction by remember { mutableStateOf(false) }
-
-    LaunchedEffect(callPermissionState.hasPermission) {
-        if (shouldPerformCallAction && callPermissionState.hasPermission) {
-            onAction(callRecording, RecordingAction.CALL)
-            shouldPerformCallAction = false
-        }
-    }
-
     Column {
-        ButtonTile(icon = Icons.Default.Call, text = "Call") {
-            if (callPermissionState.hasPermission) {
-                onAction(callRecording, RecordingAction.CALL)
-            } else {
-                shouldPerformCallAction = true
-                callPermissionState.launchPermissionRequest()
-            }
-        }
-        ButtonTile(icon = Icons.Default.AccountCircle, text = "Contact Details") {
-            onAction(callRecording, RecordingAction.CONTACT_DETAILS)
+        PermissionGuard(
+            android.Manifest.permission.CALL_PHONE,
+            action = { onAction(callRecording, RecordingAction.CALL) }
+        ) {
+            ButtonTile(icon = Icons.Default.Call, text = "Call") { it() }
         }
         ButtonTile(icon = Icons.Default.Delete, text = "Delete Recording") {
             onAction(callRecording, RecordingAction.DELETE_RECORDING)
@@ -136,14 +127,14 @@ fun RecordingActions(
 
 
 @Composable
-fun ButtonTile(icon: ImageVector, text: String, onClick: (() -> Unit)? = null) {
+fun ButtonTile(icon: ImageVector, text: String, onClick: () -> Unit = {}) {
     Card(
         shape = RectangleShape,
         backgroundColor = Color.Transparent,
         elevation = 0.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick ?: {}),
+            .clickable(onClick = onClick),
     ) {
         ProvideTextStyle(
             value = MaterialTheme.typography.button

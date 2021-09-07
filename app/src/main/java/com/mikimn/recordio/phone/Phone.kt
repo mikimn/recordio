@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 
-
 fun launchCall(context: Context, destination: String) {
     val uri = "tel:${destination.trim()}"
     val intent = Intent(Intent.ACTION_CALL)

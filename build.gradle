@@ -1,8 +1,9 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 buildscript {
     ext {
-        compose_version = "1.0.1"
-        compose_runtime_version = "1.1.0-alpha02"
+        compose_version = "1.0.2"
+        compose_runtime_version = "1.1.0-alpha03"
+        compose_navigation_version = "2.4.0-alpha08"
         nav_version = "2.3.5"
         room_version = "2.3.0"
         lifecycle_version = "2.4.0-alpha03"

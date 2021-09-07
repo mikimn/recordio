@@ -1,134 +1,114 @@
 package com.mikimn.recordio.recording
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.media.MediaRecorder
-import android.os.Bundle
-import android.os.Environment
+import android.graphics.Color
+import android.net.Uri
+import android.os.Build
 import android.os.IBinder
-import android.telephony.TelephonyManager
 import android.util.Log
 import android.widget.Toast
-import java.io.File
-import java.io.IOException
-import java.text.SimpleDateFormat
-import java.util.*
+import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
+import androidx.documentfile.provider.DocumentFile
+import com.mikimn.recordio.*
+import com.mikimn.recordio.db.AppDatabase
+import com.mikimn.recordio.recording.impl.CallRecordingServiceImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import java.time.Duration
 
 
 class RecordingService : Service() {
-    var recorder: MediaRecorder? = null
-    var audiofile: File? = null
-    var name: String? = null
-    private var recordstarted = false
-    private var br_call: CallBr? = null
+    companion object {
+        const val ONGOING_NOTIFICATION_ID = 1
+        const val CHANNEL_DEFAULT_IMPORTANCE = "general"
+
+        private const val EXTRA_PHONE_NUMBER = "phoneNumber"
+        private const val EXTRA_CALL_TYPE = "callType"
+
+        fun newRecording(context: Context, phoneNumber: String?, callType: CallType): Intent {
+            return Intent(context, RecordingService::class.java).apply {
+                putExtra(EXTRA_PHONE_NUMBER, phoneNumber ?: "Unknown")
+                putExtra(EXTRA_CALL_TYPE, callType.ordinal)
+            }
+        }
+
+        fun stopRecording(context: Context): Intent {
+            return Intent(context, RecordingService::class.java)
+        }
+    }
+    private lateinit var callRecordingService: CallRecordingService
 
     override fun onBind(arg0: Intent?): IBinder? {
         return null
     }
 
     override fun onDestroy() {
-        Log.d("service", "destroy")
         super.onDestroy()
+        callRecordingService.endCallRecording(this)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        callRecordingService = CallRecordingServiceImpl(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // final String terminate =(String)
-        // intent.getExtras().get("terminate");//
-        // intent.getStringExtra("terminate");
-        // Log.d("TAG", "service started");
-        //
-        // TelephonyManager telephony = (TelephonyManager)
-        // getSystemService(Context.TELEPHONY_SERVICE); // TelephonyManager
-        // // object
-        // CustomPhoneStateListener customPhoneListener = new
-        // CustomPhoneStateListener();
-        // telephony.listen(customPhoneListener,
-        // PhoneStateListener.LISTEN_CALL_STATE);
-        // context = getApplicationContext();
-        val filter = IntentFilter()
-        filter.addAction(ACTION_OUT)
-        filter.addAction(ACTION_IN)
-        br_call = CallBr()
-        this.registerReceiver(br_call, filter)
+        if (intent != null) {
+            val phoneNumber = intent.getStringExtra(EXTRA_PHONE_NUMBER)!!
+            val callType = CallType.values()[intent.getIntExtra(EXTRA_CALL_TYPE, 0)]
 
-        // if(terminate != null) {
-        // stopSelf();
-        // }
+            startForegroundWithNotification()
+
+            if(!callRecordingService.beginCallRecording(this, phoneNumber, callType)) {
+                Toast.makeText(this, "Failed to start recording", Toast.LENGTH_LONG).show()
+                stopSelf()
+            }
+        }
         return START_NOT_STICKY
     }
 
-    inner class CallBr : BroadcastReceiver() {
-        var bundle: Bundle? = null
-        var state: String? = null
-        var inCall: String? = null
-        var outCall: String? = null
-        var wasRinging = false
-        override fun onReceive(context: Context?, intent: Intent) {
-            if (intent.action == ACTION_IN) {
-                if (intent.extras.also { bundle = it } != null) {
-                    state = bundle!!.getString(TelephonyManager.EXTRA_STATE)
-                    if (state == TelephonyManager.EXTRA_STATE_RINGING) {
-                        inCall = bundle!!.getString(TelephonyManager.EXTRA_INCOMING_NUMBER)
-                        wasRinging = true
-                        Toast.makeText(context, "IN : $inCall", Toast.LENGTH_LONG).show()
-                    } else if (state == TelephonyManager.EXTRA_STATE_OFFHOOK) {
-                        if (wasRinging == true) {
-                            Toast.makeText(context, "ANSWERED", Toast.LENGTH_LONG).show()
-                            val out: String = SimpleDateFormat("dd-MM-yyyy hh-mm-ss").format(Date())
-                            val sampleDir = File(
-                                Environment.getExternalStorageDirectory(),
-                                "/TestRecordingDasa1"
-                            )
-                            if (!sampleDir.exists()) {
-                                sampleDir.mkdirs()
-                            }
-                            val file_name = "Record"
-                            try {
-                                audiofile = File.createTempFile(file_name, ".amr", sampleDir)
-                            } catch (e: IOException) {
-                                e.printStackTrace()
-                            }
-                            val path: String =
-                                Environment.getExternalStorageDirectory().getAbsolutePath()
-                            recorder = MediaRecorder()
-                            //                          recorder.setAudioSource(MediaRecorder.AudioSource.VOICE_CALL);
-                            recorder!!.setAudioSource(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
-                            recorder!!.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB)
-                            recorder!!.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB)
-                            recorder!!.setOutputFile(audiofile!!.getAbsolutePath())
-                            try {
-                                recorder!!.prepare()
-                            } catch (e: IllegalStateException) {
-                                e.printStackTrace()
-                            } catch (e: IOException) {
-                                e.printStackTrace()
-                            }
-                            recorder!!.start()
-                            recordstarted = true
-                        }
-                    } else if (state == TelephonyManager.EXTRA_STATE_IDLE) {
-                        wasRinging = false
-                        Toast.makeText(context, "REJECT || DISCO", Toast.LENGTH_LONG).show()
-                        if (recordstarted) {
-                            recorder!!.stop()
-                            recordstarted = false
-                        }
-                    }
-                }
-            } else if (intent.action == ACTION_OUT) {
-                if (intent.extras.also { bundle = it } != null) {
-                    outCall = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER)
-                    Toast.makeText(context, "OUT : $outCall", Toast.LENGTH_LONG).show()
-                }
+    private fun startForegroundWithNotification() {
+        val pendingIntent: PendingIntent =
+            Intent(this, MainActivity::class.java).let { notificationIntent ->
+                val intentFlags =
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    else 0
+                PendingIntent.getActivity(
+                    this, 0, notificationIntent,
+                    intentFlags
+                )
             }
-        }
+
+        val channelId =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                createNotificationChannel(CHANNEL_DEFAULT_IMPORTANCE, "Recording Notification")
+            } else ""
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setContentTitle(getText(R.string.recording_notification_title))
+            .setContentText(getText(R.string.notification_message))
+            .setSmallIcon(R.drawable.ic_baseline_record_voice_over_24)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .build()
+
+        startForeground(ONGOING_NOTIFICATION_ID, notification)
     }
 
-    companion object {
-        private const val ACTION_IN = TelephonyManager.ACTION_PHONE_STATE_CHANGED
-        private const val ACTION_OUT = "android.intent.action.NEW_OUTGOING_CALL"
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel(channelId: String, channelName: String): String{
+        val chan = NotificationChannel(channelId,
+            channelName, NotificationManager.IMPORTANCE_NONE)
+        chan.lightColor = Color.BLUE
+        val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        service.createNotificationChannel(chan)
+        return channelId
     }
 }

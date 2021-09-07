@@ -37,7 +37,7 @@ fun AudioPlayer(
             Slider(
                 valueRange = 0f..(durationSeconds.toFloat()),
                 value = sliderValue.toFloat(),
-                steps = durationSeconds.toInt(),
+                // steps = durationSeconds.toInt() - 1, // Excluding 0
                 onValueChange = {
                     sliderValue = it.toInt()
                     onPlaceSelected(sliderValue)
