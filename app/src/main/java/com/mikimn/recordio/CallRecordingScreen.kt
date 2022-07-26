@@ -1,12 +1,12 @@
 package com.mikimn.recordio
 
+import android.content.Context
+import android.content.Intent
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
@@ -19,13 +19,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.documentfile.provider.DocumentFile
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.mikimn.recordio.device.PermissionGuard
 import com.mikimn.recordio.layout.AudioPlayer
-import com.mikimn.recordio.phone.launchCall
 
+fun launchCall(context: Context, destination: String) {
+    val uri = "tel:${destination.trim()}"
+    val intent = Intent(Intent.ACTION_CALL)
+    intent.data = Uri.parse(uri)
+    context.startActivity(intent)
+}
 
 @Composable
 fun CallRecordingScreen(
@@ -157,13 +161,6 @@ fun ButtonTile(icon: ImageVector, text: String, onClick: () -> Unit = {}) {
 @Composable
 fun PreviewRecordingHeader() {
     RecordingHeader(callRecordingFromId(-1))
-}
-
-
-@Preview(showBackground = true)
-@Composable
-fun PreviewRecordingPlayback() {
-    AudioPlayer(callRecordingFromId(-1).duration)
 }
 
 

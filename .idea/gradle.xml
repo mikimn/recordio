@@ -16,7 +16,6 @@
             <option value="$PROJECT_DIR$/compose-mdi-icons" />
           </set>
         </option>
-        <option name="resolveModulePerSourceSet" value="false" />
       </GradleProjectSettings>
     </option>
   </component>

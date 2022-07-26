@@ -5,15 +5,80 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.provider.Settings
-import android.provider.Telephony
+import android.os.Build
 import android.telephony.TelephonyManager
-import android.text.TextUtils
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
-import com.mikimn.recordio.phone.PhoneCall
-import com.mikimn.recordio.phone.handleIncomingCall
-import com.mikimn.recordio.phone.handleOutgoingCall
-import com.mikimn.recordio.phone.phoneCallInformation
+import android.widget.Toast
+import com.mikimn.recordio.CallType
+import com.mikimn.recordio.recording.RecordingService
+
+sealed class PhoneCall {
+    data class Incoming(
+        val state: String,
+        val number: String?
+    ): PhoneCall()
+
+    data class Outgoing(
+        val number: String?
+    ): PhoneCall()
+
+    object Unknown : PhoneCall()
+}
+
+
+fun Intent.phoneCallInformation(): PhoneCall {
+    val action = action
+    val extras = extras
+    if (extras != null) {
+        if (action.equals(TelephonyManager.ACTION_PHONE_STATE_CHANGED)) {
+            // Incoming Call
+            val state = getStringExtra(TelephonyManager.EXTRA_STATE)!!
+            if (hasExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)) {
+                val number = getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)!!
+
+                return PhoneCall.Incoming(state, number)
+                // handleIncomingCall(context, state, number)
+            }
+        } else if (action.equals(Intent.ACTION_NEW_OUTGOING_CALL)) {
+            val number = getStringExtra(Intent.EXTRA_PHONE_NUMBER)
+            return PhoneCall.Outgoing(number)
+            // handleOutgoingCall(context, number)
+        }
+    }
+    return PhoneCall.Unknown
+}
+
+fun handleIncomingCall(context: Context, phoneCall: PhoneCall.Incoming) {
+    val state = phoneCall.state
+    val number = phoneCall.number
+    if (state == TelephonyManager.EXTRA_STATE_RINGING) {
+        Toast.makeText(context, "Incoming: $number", Toast.LENGTH_SHORT).show()
+    } else if (state == TelephonyManager.EXTRA_STATE_OFFHOOK) {
+        Toast.makeText(context, "Answered", Toast.LENGTH_SHORT).show()
+        // Start Recording
+        val intent = RecordingService.newRecording(
+            context,
+            number,
+            CallType.INCOMING
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    } else if (state == TelephonyManager.EXTRA_STATE_IDLE) {
+        Toast.makeText(context, "Reject || Disconnected", Toast.LENGTH_SHORT).show()
+        // Stop Recording
+        context.stopService(RecordingService.stopRecording(context))
+    }
+}
+
+fun handleOutgoingCall(context: Context, phoneCall: PhoneCall.Outgoing) {
+    val number = phoneCall.number
+    Toast.makeText(context, "Outgoing: $number", Toast.LENGTH_SHORT).show()
+    // Start Recording
+}
 
 class RecordingAccessibilityService : AccessibilityService() {
     override fun onCreate() {
@@ -31,6 +96,7 @@ class RecordingAccessibilityService : AccessibilityService() {
         filter.addAction(TelephonyManager.ACTION_PHONE_STATE_CHANGED)
         filter.addAction(Intent.ACTION_NEW_OUTGOING_CALL)
         registerReceiver(CallBroadcastReceiver(), filter)
+        Log.d("RecordingService", "bindCallBroadcastReceiver")
     }
 
     private fun unbindCallBroadcastReceiver() {
@@ -57,38 +123,3 @@ class RecordingAccessibilityService : AccessibilityService() {
 }
 
 
-/**
- * Check that the accessibility service is enabled.
- *
- * @param context The application's context
- * @return true is the accessibility service has been enabled through the settings, false otherwise
- */
-inline fun <reified T: AccessibilityService> checkAccessibilityService(context: Context): Boolean {
-    val service = context.packageName + "/" + T::class.java.canonicalName
-    try {
-        val accessibilityEnabled: Boolean = Settings.Secure.getInt(
-            context.applicationContext.contentResolver,
-            Settings.Secure.ACCESSIBILITY_ENABLED
-        ) == 1
-
-        val stringSplitter = TextUtils.SimpleStringSplitter(':')
-        if (accessibilityEnabled) {
-            val settingValue = Settings.Secure.getString(
-                context.applicationContext.contentResolver,
-                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-            )
-            if (settingValue != null) {
-                stringSplitter.setString(settingValue)
-                while (stringSplitter.hasNext()) {
-                    val accessibilityService = stringSplitter.next()
-                    if (accessibilityService.equals(service, ignoreCase = true)) {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    } catch (e: Settings.SettingNotFoundException) {
-        throw IllegalStateException("${T::class.simpleName} is not an accessibility service")
-    }
-}

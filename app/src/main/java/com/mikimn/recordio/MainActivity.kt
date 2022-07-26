@@ -31,7 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.mikimn.recordio.db.AppDatabase
 import com.mikimn.recordio.device.PermissionGuard
-import com.mikimn.recordio.device.rememberDirectoryPickerState
+import com.mikimn.recordio.layout.rememberDirectoryPickerState
 import com.mikimn.recordio.ui.theme.RecordioTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -145,32 +145,20 @@ fun TopBar(title: String, onBack: (() -> Unit)? = null) {
     )
 }
 
-
 @Composable
 fun SelectDirectoryFloatingActionButton(onDirectorySelected: (Uri) -> Unit = {}) {
-    // var requestRecording by remember { mutableStateOf(false) }
-    // var isRecording by remember { mutableStateOf(false) }
-    // val recordingRepository = RecordingRepository()
-
     var requestSelectFile by remember { mutableStateOf(false) }
-
 
     val filePickerState = rememberDirectoryPickerState()
     val context = LocalContext.current
-    // val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(filePickerState.uri) {
-        if (requestSelectFile && filePickerState.uri != null) {
-            val uri = filePickerState.directory(context).uri
-            onDirectorySelected(uri)
+        if (requestSelectFile) {
+            if (filePickerState.uri != null) {
+                val uri = filePickerState.directory(context).uri
+                onDirectorySelected(uri)
+            }
             requestSelectFile = false
-//            recordingRepository.startRecording(
-//                context,
-//                filePickerState.directory(context),
-//                MicrophoneType.MIC
-//            )
-//            isRecording = true
-//            requestRecording = false
         }
     }
 

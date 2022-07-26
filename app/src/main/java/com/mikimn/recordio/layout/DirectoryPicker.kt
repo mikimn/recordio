@@ -1,4 +1,4 @@
-package com.mikimn.recordio.device
+package com.mikimn.recordio.layout
 
 import android.app.Activity
 import android.content.Context
@@ -16,7 +16,7 @@ import androidx.documentfile.provider.DocumentFile.fromTreeUri
 
 
 class DirectoryPickerState {
-    internal var launcher: ManagedActivityResultLauncher<Uri?, Uri>? = null
+    internal var launcher: ManagedActivityResultLauncher<Uri?, Uri?>? = null
     internal var result by mutableStateOf<Uri?>(null)
 
     fun launch() = launcher?.launch(null)
@@ -40,14 +40,14 @@ fun rememberDirectoryPickerState(): DirectoryPickerState {
     val launcher =
         rememberLauncherForActivityResult(OpenPersistableDocumentsTree()) { originalUri ->
             state.result = originalUri
-            Log.d("DirectoryPicker", "originalUri = ${originalUri.encodedPath}")
+            Log.d("DirectoryPicker", "originalUri = ${originalUri?.encodedPath}")
         }
     state.launcher = launcher
     return state
 }
 
 
-class OpenPersistableDocumentsTree : ActivityResultContract<Uri?, Uri>() {
+private class OpenPersistableDocumentsTree : ActivityResultContract<Uri?, Uri?>() {
     var context: Context? = null
 
     override fun createIntent(context: Context, input: Uri?): Intent {
@@ -76,7 +76,7 @@ class OpenPersistableDocumentsTree : ActivityResultContract<Uri?, Uri>() {
         }
     }
 
-    override fun getSynchronousResult(context: Context, input: Uri?): SynchronousResult<Uri>? {
+    override fun getSynchronousResult(context: Context, input: Uri?): SynchronousResult<Uri?>? {
         return null
     }
 }

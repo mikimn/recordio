@@ -1,11 +1,24 @@
 package com.mikimn.recordio.device
 
-import android.util.Log
 import androidx.compose.runtime.*
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
+import com.mikimn.recordio.compose.Guard
+import com.mikimn.recordio.compose.GuardedMultiPermissionState
+import com.mikimn.recordio.compose.GuardedPermissionState
 
+@ExperimentalPermissionsApi
+@Composable
+fun rememberGuardedPermissionState(permission: String): GuardedPermissionState = GuardedPermissionState(
+    rememberPermissionState(permission = permission)
+)
+
+@ExperimentalPermissionsApi
+@Composable
+fun rememberGuardedPermissionState(vararg permission: String): GuardedMultiPermissionState = GuardedMultiPermissionState(
+    rememberMultiplePermissionsState(permission.toList())
+)
 
 /**
  * Allows guarding an action which requires a [permission]. This composable accepts a [contents]
@@ -21,25 +34,8 @@ fun PermissionGuard(
     action: () -> Unit,
     contents: @Composable (protectedAction: () -> Unit) -> Unit
 ) {
-    val callPermissionState = rememberPermissionState(permission)
-    var shouldPerformAction by remember { mutableStateOf(false) }
-
-    LaunchedEffect(callPermissionState.hasPermission) {
-        if (shouldPerformAction && callPermissionState.hasPermission) {
-            action()
-            shouldPerformAction = false
-        }
-    }
-
-    val protectedAction = {
-        if (callPermissionState.hasPermission) {
-            action()
-        } else {
-            shouldPerformAction = true
-            callPermissionState.launchPermissionRequest()
-        }
-    }
-    return contents(protectedAction)
+    val callPermissionState = rememberGuardedPermissionState(permission)
+    Guard(callPermissionState, action, contents)
 }
 
 
@@ -50,7 +46,6 @@ fun PermissionGuard(
     contents: @Composable () -> Unit
 ) {
     val callPermissionState = rememberMultiplePermissionsState(permission.toList())
-    // var shouldPerformAction by remember { mutableStateOf(false) }
 
     LaunchedEffect(callPermissionState.allPermissionsGranted) {
         if (!callPermissionState.allPermissionsGranted) {

@@ -3,9 +3,7 @@ package com.mikimn.recordio.recording
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.MediaRecorder
+import android.media.*
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -98,7 +96,7 @@ class RecordingRepository {
 
     private fun buildAudioRecorder(
         context: Context,
-        audioSource: Int = MediaRecorder.AudioSource.VOICE_CALL
+        audioSource: Int = MediaRecorder.AudioSource.MIC
     ): Pair<AudioRecord, Int> {
         val hasPermission = ContextCompat.checkSelfPermission(
             context,
@@ -126,7 +124,19 @@ class RecordingRepository {
                 bufferSize
             )
             when (audioRecord.state) {
-                AudioRecord.STATE_INITIALIZED -> return audioRecord to bufferSize
+                AudioRecord.STATE_INITIALIZED -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val audioManager =
+                            context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+                        for (device in audioManager.getDevices(AudioManager.GET_DEVICES_INPUTS)) {
+                            if (device.type == AudioDeviceInfo.TYPE_TELEPHONY) {
+                                audioRecord.preferredDevice = device
+                                break
+                            }
+                        }
+                    }
+                    return audioRecord to bufferSize
+                }
                 else -> throw IllegalStateException("Error initializing AudioRecord")
             }
         } catch (ex: SecurityException) {

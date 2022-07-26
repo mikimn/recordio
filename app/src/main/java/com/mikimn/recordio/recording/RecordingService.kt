@@ -7,27 +7,21 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
-import android.net.Uri
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
-import androidx.documentfile.provider.DocumentFile
-import com.mikimn.recordio.*
-import com.mikimn.recordio.db.AppDatabase
+import com.mikimn.recordio.CallType
+import com.mikimn.recordio.MainActivity
+import com.mikimn.recordio.R
 import com.mikimn.recordio.recording.impl.CallRecordingServiceImpl
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import java.time.Duration
 
 
 class RecordingService : Service() {
     companion object {
-        const val ONGOING_NOTIFICATION_ID = 1
-        const val CHANNEL_DEFAULT_IMPORTANCE = "general"
+        private const val ONGOING_NOTIFICATION_ID = 1
+        private const val CHANNEL_DEFAULT_IMPORTANCE = "general"
 
         private const val EXTRA_PHONE_NUMBER = "phoneNumber"
         private const val EXTRA_CALL_TYPE = "callType"
@@ -43,6 +37,7 @@ class RecordingService : Service() {
             return Intent(context, RecordingService::class.java)
         }
     }
+
     private lateinit var callRecordingService: CallRecordingService
 
     override fun onBind(arg0: Intent?): IBinder? {
@@ -66,7 +61,7 @@ class RecordingService : Service() {
 
             startForegroundWithNotification()
 
-            if(!callRecordingService.beginCallRecording(this, phoneNumber, callType)) {
+            if (!callRecordingService.beginCallRecording(this, phoneNumber, callType)) {
                 Toast.makeText(this, "Failed to start recording", Toast.LENGTH_LONG).show()
                 stopSelf()
             }
@@ -103,12 +98,15 @@ class RecordingService : Service() {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun createNotificationChannel(channelId: String, channelName: String): String{
-        val chan = NotificationChannel(channelId,
-            channelName, NotificationManager.IMPORTANCE_NONE)
-        chan.lightColor = Color.BLUE
+    private fun createNotificationChannel(channelId: String, channelName: String): String {
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_NONE
+        )
+        channel.lightColor = Color.BLUE
         val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        service.createNotificationChannel(chan)
+        service.createNotificationChannel(channel)
         return channelId
     }
 }
