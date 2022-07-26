@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.CallMissed
 import androidx.compose.material.icons.filled.CallReceived
@@ -49,7 +48,7 @@ class MainActivity : ComponentActivity() {
                         ) { _, recording ->
                             snackbarCoroutineScope.launch {
                                 scaffoldState.snackbarHostState
-                                    .showSnackbar("Call recording ${recording.filePath} clicked")
+                                    .showSnackbar("Call recording ${recording.id} clicked")
                             }
                         }
                     }
@@ -69,8 +68,8 @@ fun TopBar(title: String) {
 
 @Composable
 fun RecordingList(
-    recordings: List<CallRecording>,
-    onClick: (index: Int, recording: CallRecording) -> Unit,
+    recordings: List<RegisteredCall>,
+    onClick: (index: Int, recording: RegisteredCall) -> Unit,
 ) {
     val scrollState = rememberLazyListState()
 
@@ -84,7 +83,7 @@ fun RecordingList(
 
 @Composable
 fun RecordingItem(
-    recording: CallRecording,
+    recording: RegisteredCall,
     onClick: () -> Unit = {},
 ) {
     Card(
