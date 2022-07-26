@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            RecordioTheme {
+            RecordioTheme(darkTheme = false) {
                 val scaffoldState = rememberScaffoldState()
                 val snackbarCoroutineScope = rememberCoroutineScope()
 
@@ -43,8 +43,8 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding),
                         color = MaterialTheme.colors.background
                     ) {
-                        RecordingList(
-                            recordings = dummyCallRecordings(100)
+                        CallList(
+                            recordings = dummyCalls(100)
                         ) { _, recording ->
                             snackbarCoroutineScope.launch {
                                 scaffoldState.snackbarHostState
@@ -67,7 +67,7 @@ fun TopBar(title: String) {
 
 
 @Composable
-fun RecordingList(
+fun CallList(
     recordings: List<RegisteredCall>,
     onClick: (index: Int, recording: RegisteredCall) -> Unit,
 ) {
@@ -75,15 +75,15 @@ fun RecordingList(
 
     LazyColumn(state = scrollState) {
         itemsIndexed(recordings) { index, recording ->
-            RecordingItem(recording) { onClick(index, recording) }
+            CallItem(recording) { onClick(index, recording) }
         }
     }
 }
 
 
 @Composable
-fun RecordingItem(
-    recording: RegisteredCall,
+fun CallItem(
+    registeredCall: RegisteredCall,
     onClick: () -> Unit = {},
 ) {
     Card(
@@ -102,12 +102,12 @@ fun RecordingItem(
                     .background(color = MaterialTheme.colors.background),
                 contentAlignment = Alignment.Center
             ) {
-                recording.callType.Icon()
+                registeredCall.callType.Icon()
             }
             Column(modifier = Modifier.padding(8.dp)) {
-                Text(text = recording.source)
+                Text(text = registeredCall.source)
                 Text(
-                    text = recording.duration.humanReadable(),
+                    text = registeredCall.duration.humanReadable(),
                     style = MaterialTheme.typography.caption
                 )
             }
@@ -118,9 +118,9 @@ fun RecordingItem(
 
 @Preview(showBackground = true)
 @Composable
-fun RecordingItemPreview() {
-    RecordingItem(
-        recording = callRecordingFromId(0)
+fun CallItemPreview() {
+    CallItem(
+        registeredCall = callFromId(0)
     )
 }
 

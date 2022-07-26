@@ -16,7 +16,7 @@ data class RegisteredCall(
     val duration: Duration
 )
 
-fun callRecordingFromId(id: Int): RegisteredCall {
+fun callFromId(id: Int): RegisteredCall {
     return RegisteredCall(
         id,
         "+1-202-555-0108",
@@ -25,6 +25,6 @@ fun callRecordingFromId(id: Int): RegisteredCall {
     )
 }
 
-fun dummyCallRecordings(size: Int): List<RegisteredCall> {
-    return (0 until size).map { callRecordingFromId(it) }
+fun dummyCalls(size: Int): List<RegisteredCall> {
+    return (0 until size).map { callFromId(it) }
 }
