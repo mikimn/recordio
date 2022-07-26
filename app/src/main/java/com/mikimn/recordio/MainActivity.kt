@@ -16,9 +16,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.material.icons.filled.CallMade
+import androidx.compose.material.icons.filled.CallMissed
+import androidx.compose.material.icons.filled.CallReceived
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -181,15 +183,15 @@ fun SelectDirectoryFloatingActionButton(onDirectorySelected: (Uri) -> Unit = {})
 
 
 @Composable
-fun RecordingList(
-    recordings: List<CallRecording>,
-    onClick: (index: Int, recording: CallRecording) -> Unit,
+fun CallList(
+    recordings: List<RegisteredCall>,
+    onClick: (index: Int, recording: RegisteredCall) -> Unit,
 ) {
     val scrollState = rememberLazyListState()
 
     LazyColumn(state = scrollState) {
         itemsIndexed(recordings) { index, recording ->
-            RecordingItem(recording) { onClick(index, recording) }
+            CallItem(recording) { onClick(index, recording) }
         }
     }
 }
@@ -218,8 +220,8 @@ fun CallType.Icon() {
 
 
 @Composable
-fun RecordingItem(
-    recording: CallRecording,
+fun CallItem(
+    registeredCall: RegisteredCall,
     onClick: () -> Unit = {},
 ) {
     Card(
@@ -238,12 +240,12 @@ fun RecordingItem(
                     .background(color = MaterialTheme.colors.background),
                 contentAlignment = Alignment.Center
             ) {
-                recording.callType.Icon()
+                registeredCall.callType.Icon()
             }
             Column(modifier = Modifier.padding(8.dp)) {
-                Text(text = recording.source)
+                Text(text = registeredCall.source)
                 Text(
-                    text = recording.duration.humanReadable(),
+                    text = registeredCall.duration.humanReadable(),
                     style = MaterialTheme.typography.caption
                 )
             }
@@ -254,9 +256,9 @@ fun RecordingItem(
 
 @Preview(showBackground = true)
 @Composable
-fun RecordingItemPreview() {
-    RecordingItem(
-        recording = callRecordingFromId(0)
+fun CallItemPreview() {
+    CallItem(
+        registeredCall = callFromId(0)
     )
 }
 
@@ -293,4 +295,26 @@ fun Duration.humanReadable(): String {
         return "${this.toMinutes()}:${fractionalSeconds} min."
     }
     return "over an hour"
+}
+
+
+@Composable
+fun CallType.Icon() {
+    return when {
+        this == CallType.INCOMING -> Icon(
+            Icons.Default.CallMade,
+            contentDescription = "Incoming Call",
+            tint = androidx.compose.ui.graphics.Color.Green
+        )
+        this == CallType.OUTGOING -> Icon(
+            Icons.Default.CallReceived,
+            contentDescription = "Outgoing Call",
+            tint = androidx.compose.ui.graphics.Color.Blue
+        )
+        else -> Icon(
+            Icons.Default.CallMissed,
+            contentDescription = "Missed Call",
+            tint = androidx.compose.ui.graphics.Color.Blue
+        )
+    }
 }
