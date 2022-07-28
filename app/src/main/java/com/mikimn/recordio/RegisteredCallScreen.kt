@@ -21,24 +21,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.mikimn.recordio.calls.launchCall
 import com.mikimn.recordio.device.PermissionGuard
-import com.mikimn.recordio.layout.AudioPlayer
 
-fun launchCall(context: Context, destination: String) {
-    val uri = "tel:${destination.trim()}"
-    val intent = Intent(Intent.ACTION_CALL)
-    intent.data = Uri.parse(uri)
-    context.startActivity(intent)
-}
 
 @Composable
-fun CallRecordingScreen(
+fun RegisteredCallScreen(
     navController: NavController,
-    recordingsViewModel: CallRecordingsViewModel,
+    recordingsViewModel: RegisteredCallsViewModel,
     recordingId: Int
 ) {
     val scaffoldState = rememberScaffoldState()
-    var recordingState: CallRecording? by remember { mutableStateOf(null) }
+    var recordingState: RegisteredCall? by remember { mutableStateOf(null) }
 
     LaunchedEffect(recordingId) {
         recordingState = recordingsViewModel.findById(recordingId)
@@ -46,7 +40,6 @@ fun CallRecordingScreen(
 
     recordingState?.let { callRecording ->
         val context = LocalContext.current
-        val recordingFile = callRecording.documentFile(context)
         Scaffold(
             scaffoldState = scaffoldState,
             topBar = {
@@ -65,25 +58,14 @@ fun CallRecordingScreen(
                     Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
                     Text(
                         modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
-                        text = "Playback",
-                        style = MaterialTheme.typography.h5.copy(color = Color.Gray)
-                    )
-                    Text(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        text = recordingFile?.name ?: "Unknown File"
-                    )
-                    AudioPlayer(callRecording.duration)
-                    Divider(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp))
-                    Text(
-                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
                         text = "Actions",
                         style = MaterialTheme.typography.h5.copy(color = Color.Gray)
                     )
-                    RecordingActions(callRecording) { recording, action ->
+                    RecordingActions(callRecording) { registeredCall, action ->
                         when (action) {
-                            RecordingAction.CALL -> launchCall(context, recording.source)
+                            RecordingAction.CALL -> context.launchCall(registeredCall.source)
                             RecordingAction.DELETE_RECORDING -> {
-                                recordingsViewModel.delete(recording, context)
+                                recordingsViewModel.delete(registeredCall)
                                 navController.navigateUp()
                             }
                         }
@@ -96,7 +78,7 @@ fun CallRecordingScreen(
 
 
 @Composable
-fun RecordingHeader(callRecording: CallRecording) {
+fun RecordingHeader(callRecording: RegisteredCall) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(text = "Recording ${callRecording.id}", style = MaterialTheme.typography.h3)
         Text(text = "Duration: ${callRecording.duration.humanReadable()}")
@@ -113,8 +95,8 @@ enum class RecordingAction {
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun RecordingActions(
-    callRecording: CallRecording,
-    onAction: (recording: CallRecording, action: RecordingAction) -> Unit = { _, _ -> }
+    callRecording: RegisteredCall,
+    onAction: (recording: RegisteredCall, action: RecordingAction) -> Unit = { _, _ -> }
 ) {
     Column {
         PermissionGuard(
@@ -160,7 +142,7 @@ fun ButtonTile(icon: ImageVector, text: String, onClick: () -> Unit = {}) {
 @Preview(showBackground = true)
 @Composable
 fun PreviewRecordingHeader() {
-    RecordingHeader(callRecordingFromId(-1))
+    RecordingHeader(callFromId(-1))
 }
 
 
@@ -168,7 +150,7 @@ fun PreviewRecordingHeader() {
 @Preview(showBackground = true)
 @Composable
 fun PreviewRecordingActions() {
-    RecordingActions(callRecordingFromId(-1))
+    RecordingActions(callFromId(-1))
 }
 
 

@@ -19,8 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CallMade
 import androidx.compose.material.icons.filled.CallMissed
 import androidx.compose.material.icons.filled.CallReceived
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +39,9 @@ import kotlinx.coroutines.launch
 import java.time.Duration
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import com.mikimn.recordio.device.RecordingAccessibilityService
 import com.mikimn.recordio.device.checkAccessibilityService
 
@@ -48,9 +49,9 @@ import com.mikimn.recordio.device.checkAccessibilityService
 class MainActivity : ComponentActivity() {
 
     private val applicationScope = CoroutineScope(SupervisorJob())
-    private val recordingsViewModel: CallRecordingsViewModel by viewModels {
-        CallRecordingsViewModelFactory(
-            CallRecordingsRepository(
+    private val recordingsViewModel: RegisteredCallsViewModel by viewModels {
+        RegisteredCallsViewModelFactory(
+            RegisteredCallsRepository(
                 AppDatabase.instance(applicationContext, applicationScope).callRecordingsDao()
             )
         )
@@ -68,7 +69,7 @@ class MainActivity : ComponentActivity() {
                     composable(
                         "recording/{recordingId}",
                     ) { backStackEntry ->
-                        CallRecordingScreen(
+                        RegisteredCallScreen(
                             navController,
                             recordingsViewModel,
                             backStackEntry.arguments?.getString("recordingId")?.toInt() ?: -1
@@ -79,30 +80,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onResume() {
-        super.onResume()
-        if (!checkAccessibilityService<RecordingAccessibilityService>(this)) {
-            val goToSettings = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-            goToSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
-            startActivity(goToSettings)
-        }
-    }
+//    override fun onResume() {
+//        super.onResume()
+//        if (!checkAccessibilityService<RecordingAccessibilityService>(this)) {
+//            val goToSettings = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+//            goToSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
+//            startActivity(goToSettings)
+//        }
+//    }
 }
 
 @Composable
 fun MainScreen(
     navController: NavController,
-    recordingsViewModel: CallRecordingsViewModel
+    viewModel: RegisteredCallsViewModel
 ) {
     val scaffoldState = rememberScaffoldState()
     val snackbarCoroutineScope = rememberCoroutineScope()
-    val recordings by recordingsViewModel.recordings.observeAsState(emptyList())
+    val recordings by viewModel.calls.observeAsState(emptyList())
 
     PermissionGuard(
         Manifest.permission.PROCESS_OUTGOING_CALLS,
         Manifest.permission.READ_PHONE_STATE,
-        Manifest.permission.READ_CALL_LOG,
-        Manifest.permission.RECORD_AUDIO
+        Manifest.permission.READ_CALL_LOG
     ) {
         Scaffold(
             scaffoldState = scaffoldState,
@@ -123,9 +123,9 @@ fun MainScreen(
                 modifier = Modifier.padding(innerPadding),
                 color = MaterialTheme.colors.background
             ) {
-                RecordingList(recordings = recordings) { _, recording ->
+                CallList(calls = recordings) { _, call ->
                     snackbarCoroutineScope.launch {
-                        navController.navigate("recording/${recording.id}")
+                        navController.navigate("recording/${call.id}")
                     }
                 }
             }
@@ -163,58 +163,20 @@ fun SelectDirectoryFloatingActionButton(onDirectorySelected: (Uri) -> Unit = {})
             requestSelectFile = false
         }
     }
-
-    ExtendedFloatingActionButton(
-        onClick = {
-            if (!requestSelectFile) {
-                filePickerState.launch()
-                requestSelectFile = true
-            }
-        },
-        text = { Text(text = "Select Directory") },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Folder,
-                contentDescription = "Recording"
-            )
-        }
-    )
 }
 
 
 @Composable
 fun CallList(
-    recordings: List<RegisteredCall>,
-    onClick: (index: Int, recording: RegisteredCall) -> Unit,
+    calls: List<RegisteredCall>,
+    onClick: (index: Int, registeredCall: RegisteredCall) -> Unit,
 ) {
     val scrollState = rememberLazyListState()
 
     LazyColumn(state = scrollState) {
-        itemsIndexed(recordings) { index, recording ->
+        itemsIndexed(calls) { index, recording ->
             CallItem(recording) { onClick(index, recording) }
         }
-    }
-}
-
-
-@Composable
-fun CallType.Icon() {
-    return when {
-        this == CallType.INCOMING -> Icon(
-            Icons.Default.CallMade,
-            contentDescription = "Incoming Call",
-            tint = androidx.compose.ui.graphics.Color.Green
-        )
-        this == CallType.OUTGOING -> Icon(
-            Icons.Default.CallReceived,
-            contentDescription = "Outgoing Call",
-            tint = androidx.compose.ui.graphics.Color.Blue
-        )
-        else -> Icon(
-            Icons.Default.CallMissed,
-            contentDescription = "Missed Call",
-            tint = androidx.compose.ui.graphics.Color.Blue
-        )
     }
 }
 

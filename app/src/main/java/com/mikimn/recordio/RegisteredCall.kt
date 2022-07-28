@@ -1,7 +1,10 @@
 package com.mikimn.recordio
 
+import androidx.room.*
+import com.mikimn.recordio.db.Converters
 import java.time.Duration
 import kotlin.math.abs
+
 
 enum class CallType {
     INCOMING,
@@ -9,12 +12,16 @@ enum class CallType {
     MISSED
 }
 
+
+@Entity(tableName = "registered_calls")
+@TypeConverters(Converters.CallTypeConverter::class, Converters.DurationConverter::class)
 data class RegisteredCall(
-    val id: Int,
-    val source: String,
-    val callType: CallType,
-    val duration: Duration
+    @PrimaryKey(autoGenerate = true) val id: Int,
+    @ColumnInfo(name = "source") val source: String,
+    @ColumnInfo(name = "call_type") val callType: CallType,
+    @ColumnInfo(name = "duration") val duration: Duration,
 )
+
 
 fun callFromId(id: Int): RegisteredCall {
     return RegisteredCall(
@@ -25,6 +32,9 @@ fun callFromId(id: Int): RegisteredCall {
     )
 }
 
+
 fun dummyCalls(size: Int): List<RegisteredCall> {
-    return (0 until size).map { callFromId(it) }
+    return (0 until size).map { callFromId(0) }
 }
+
+

@@ -6,8 +6,9 @@ import android.net.Uri
 import android.util.Log
 import androidx.core.app.ServiceCompat
 import androidx.documentfile.provider.DocumentFile
-import com.mikimn.recordio.CallRecording
 import com.mikimn.recordio.CallType
+import com.mikimn.recordio.RegisteredCall
+import com.mikimn.recordio.RegisteredCallsRepository
 import com.mikimn.recordio.db.AppDatabase
 import com.mikimn.recordio.recording.CallRecordingService
 import com.mikimn.recordio.recording.RecordingRepository
@@ -20,13 +21,19 @@ class CallRecordingServiceImpl(
     context: Context
 ) : CallRecordingService {
     private val scope = CoroutineScope(Dispatchers.Main)
-    private val dao = AppDatabase.instance(context, scope).callRecordingsDao()
+    private val callRepository = RegisteredCallsRepository(
+        AppDatabase.instance(context, scope).callRecordingsDao()
+    )
     private val recordingRepository = RecordingRepository()
 
     private var phoneNumber: String? = null
     private var callType: CallType? = null
 
-    override fun beginCallRecording(context: Context, phoneNumber: String?, callType: CallType): Boolean {
+    override fun beginCallRecording(
+        context: Context,
+        phoneNumber: String?,
+        callType: CallType
+    ): Boolean {
         val sharedPrefs = context.getSharedPreferences(context.packageName, Context.MODE_PRIVATE)
         val uriString = sharedPrefs.getString("saveFolder", null)
 
@@ -48,7 +55,9 @@ class CallRecordingServiceImpl(
                 true
             } catch (ex: IllegalStateException) {
                 ex.printStackTrace()
-                insertCallRecording(phoneNumber ?: "Unknown Caller", callType, "Could not record")
+                scope.launch {
+                    callRepository.insert(phoneNumber ?: "Unknown Caller", callType)
+                }
                 false
             }
         }
@@ -62,22 +71,16 @@ class CallRecordingServiceImpl(
         val number = phoneNumber ?: "Unknown Caller"
         if (recordingRepository.isRecording) {
             val file = recordingRepository.stopRecording()
-            attachedService?.let { ServiceCompat.stopForeground(it, ServiceCompat.STOP_FOREGROUND_REMOVE) }
+            attachedService?.let {
+                ServiceCompat.stopForeground(
+                    it,
+                    ServiceCompat.STOP_FOREGROUND_REMOVE
+                )
+            }
             val filePath = file.uri.toString()
-            insertCallRecording(number, type, filePath)
-        }
-    }
-
-    private fun insertCallRecording(number: String, type: CallType, filePath: String) {
-        val recording = CallRecording(
-            id = 0, // Auto-generate
-            source = number,
-            callType = type,
-            duration = Duration.ofSeconds(10), // FIXME
-            filePath = filePath
-        )
-        scope.launch {
-            dao.insert(recording)
+            scope.launch {
+                callRepository.insert(number, type)
+            }
         }
     }
 }
