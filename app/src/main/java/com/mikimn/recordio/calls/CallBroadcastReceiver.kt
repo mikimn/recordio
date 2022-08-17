@@ -5,11 +5,7 @@ import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.widget.Toast
-import androidx.core.app.ActivityCompat
-import com.mikimn.recordio.RegisteredCallsRepository
-import com.mikimn.recordio.db.AppDatabase
 import com.mikimn.recordio.system.checkPermissions
 
 class CallBroadcastReceiver : BroadcastReceiver() {
@@ -29,7 +25,8 @@ class CallBroadcastReceiver : BroadcastReceiver() {
         ).show()
     }
 
-    @SuppressLint("MissingPermission")
+    @Suppress("DEPRECATION")
+    @SuppressLint("MissingPermission", "UnsafeProtectedBroadcastReceiver")
     override fun onReceive(context: Context, intent: Intent) {
         if (!context.checkPermissions(
                 Manifest.permission.READ_CALL_LOG,

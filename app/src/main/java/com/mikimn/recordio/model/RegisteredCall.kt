@@ -1,9 +1,11 @@
-package com.mikimn.recordio
+package com.mikimn.recordio.model
 
-import androidx.room.*
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import androidx.room.TypeConverters
 import com.mikimn.recordio.db.Converters
 import java.time.Duration
-import kotlin.math.abs
 
 
 enum class CallType {
@@ -22,19 +24,5 @@ data class RegisteredCall(
     @ColumnInfo(name = "duration") val duration: Duration,
 )
 
-
-fun callFromId(id: Int): RegisteredCall {
-    return RegisteredCall(
-        id,
-        "+1-202-555-0108",
-        CallType.values()[abs(id) % CallType.values().size],
-        Duration.ofMinutes(5).plus(Duration.ofSeconds(23))
-    )
-}
-
-
-fun dummyCalls(size: Int): List<RegisteredCall> {
-    return (0 until size).map { callFromId(0) }
-}
 
 

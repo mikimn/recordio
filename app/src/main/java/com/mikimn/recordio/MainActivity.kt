@@ -25,6 +25,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.mikimn.recordio.db.AppDatabase
+import com.mikimn.recordio.model.CallType
+import com.mikimn.recordio.model.RegisteredCall
 import com.mikimn.recordio.ui.theme.RecordioTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -135,20 +137,8 @@ fun CallItem(
 @Composable
 fun CallItemPreview() {
     CallItem(
-        registeredCall = callFromId(0)
+        registeredCall = RegisteredCall(1, "+ 1-234-564-7594", CallType.INCOMING, Duration.ofSeconds(543))
     )
-}
-
-
-fun Duration.timerFormatted(): String {
-    val hours = toHours().toString().padStart(2, '0')
-    val minutes = toMinutes().toString().padStart(2, '0')
-    val minutesPart = (toMinutes() % 60).toString().padStart(2, '0')
-    val seconds = (seconds % 60).toString().padStart(2, '0')
-    if (toMinutes() < 60) {
-        return "${minutes}:${seconds}"
-    }
-    return "${hours}:${minutesPart}:${seconds}"
 }
 
 

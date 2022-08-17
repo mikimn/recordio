@@ -1,7 +1,7 @@
 package com.mikimn.recordio.db
 
 import androidx.room.TypeConverter
-import com.mikimn.recordio.CallType
+import com.mikimn.recordio.model.CallType
 import java.time.Duration
 
 

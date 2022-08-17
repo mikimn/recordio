@@ -6,11 +6,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import com.mikimn.recordio.RegisteredCall
-import com.mikimn.recordio.RegisteredCallDao
-import com.mikimn.recordio.dummyCalls
+import com.mikimn.recordio.model.CallType
+import com.mikimn.recordio.model.RegisteredCall
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.time.Duration
+import kotlin.math.abs
 
 
 @Database(version = 1, entities = [RegisteredCall::class], exportSchema = false)
@@ -48,6 +49,19 @@ abstract class AppDatabase : RoomDatabase() {
                     populateDatabase(database.callRecordingsDao())
                 }
             }
+        }
+
+        private fun callFromId(id: Int): RegisteredCall {
+            return RegisteredCall(
+                id,
+                "+1-202-555-0108",
+                CallType.values()[abs(id) % CallType.values().size],
+                Duration.ofMinutes(5).plus(Duration.ofSeconds(23))
+            )
+        }
+
+        private fun dummyCalls(size: Int): List<RegisteredCall> {
+            return (0 until size).map { callFromId(0) }
         }
 
         suspend fun populateDatabase(dao: RegisteredCallDao) {
