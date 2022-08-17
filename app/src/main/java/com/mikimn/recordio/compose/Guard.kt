@@ -1,14 +1,9 @@
 package com.mikimn.recordio.compose
 
-import android.accessibilityservice.AccessibilityService
-import android.content.Context
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.MultiplePermissionsState
 import com.google.accompanist.permissions.PermissionState
-import com.google.accompanist.permissions.rememberPermissionState
-import com.mikimn.recordio.device.checkAccessibilityService
 
 
 interface GuardedState<T> {
@@ -34,18 +29,6 @@ class GuardedMultiPermissionState constructor(
         get() = allPermissionsGranted
 
     override fun launch() = launchMultiplePermissionRequest()
-}
-
-class GuardedAccessibilityServiceState<T: AccessibilityService>(
-    private val context: Context,
-    private val clazz: Class<T>
-): GuardedState<T> {
-    override val flag: Boolean
-        get() = checkAccessibilityService(context, clazz)
-
-    override fun launch() {
-        TODO("Not yet implemented")
-    }
 }
 
 @Composable
