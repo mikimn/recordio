@@ -6,7 +6,7 @@ import android.telephony.TelephonyManager
 import androidx.annotation.RequiresPermission
 
 /**
- * Algebraic data class the describes all possible states of a phone call.
+ * Algebraic data type that describes all possible states of a phone call.
  * A phone call is either [Incoming], [Outgoing], or [Unknown] in any other undefined case.
  */
 sealed class PhoneCall {

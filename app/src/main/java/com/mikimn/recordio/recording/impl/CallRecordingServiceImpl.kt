@@ -55,9 +55,9 @@ class CallRecordingServiceImpl(
                 true
             } catch (ex: IllegalStateException) {
                 ex.printStackTrace()
-                scope.launch {
-                    callRepository.insert(phoneNumber ?: "Unknown Caller", callType)
-                }
+                // scope.launch {
+                //     callRepository.insert(phoneNumber ?: "Unknown Caller", callType)
+                // }
                 false
             }
         }
@@ -78,9 +78,9 @@ class CallRecordingServiceImpl(
                 )
             }
             val filePath = file.uri.toString()
-            scope.launch {
-                callRepository.insert(number, type)
-            }
+            // scope.launch {
+            //     callRepository.insert(number, type)
+            // }
         }
     }
 }

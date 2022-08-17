@@ -47,57 +47,51 @@ import com.mikimn.recordio.device.checkAccessibilityService
 
 
 class MainActivity : ComponentActivity() {
-
     private val applicationScope = CoroutineScope(SupervisorJob())
-    private val recordingsViewModel: RegisteredCallsViewModel by viewModels {
-        RegisteredCallsViewModelFactory(
-            RegisteredCallsRepository(
-                AppDatabase.instance(applicationContext, applicationScope).callRecordingsDao()
-            )
-        )
-    }
+    private val appDatabase = AppDatabase.instance(applicationContext, applicationScope)
+//    private val recordingsViewModel: RegisteredCallsViewModel by viewModels {
+//        RegisteredCallsViewModelFactory(
+//            RegisteredCallsRepository(
+//                AppDatabase.instance(applicationContext, applicationScope).callRecordingsDao()
+//            )
+//        )
+//    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
             RecordioTheme(darkTheme = false) {
-                val navController = rememberNavController()
-
-                NavHost(navController = navController, startDestination = "main") {
-                    composable("main") { MainScreen(navController, recordingsViewModel) }
-                    composable(
-                        "recording/{recordingId}",
-                    ) { backStackEntry ->
-                        RegisteredCallScreen(
-                            navController,
-                            recordingsViewModel,
-                            backStackEntry.arguments?.getString("recordingId")?.toInt() ?: -1
-                        )
-                    }
-                }
+                MainScreen(appDatabase)
+//                val navController = rememberNavController()
+//
+//                NavHost(navController = navController, startDestination = "main") {
+//                    composable("main") { MainScreen(navController, appDatabase) }
+//                    composable(
+//                        "recording/{recordingId}",
+//                    ) { backStackEntry ->
+//                        RegisteredCallScreen(
+//                            navController,
+//                            recordingsViewModel,
+//                            backStackEntry.arguments?.getString("recordingId")?.toInt() ?: -1
+//                        )
+//                    }
+//                }
             }
         }
     }
-
-//    override fun onResume() {
-//        super.onResume()
-//        if (!checkAccessibilityService<RecordingAccessibilityService>(this)) {
-//            val goToSettings = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-//            goToSettings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_HISTORY)
-//            startActivity(goToSettings)
-//        }
-//    }
 }
 
 @Composable
 fun MainScreen(
-    navController: NavController,
-    viewModel: RegisteredCallsViewModel
+    // navController: NavController,
+    appDatabase: AppDatabase
+    // viewModel: RegisteredCallsViewModel
 ) {
     val scaffoldState = rememberScaffoldState()
     val snackbarCoroutineScope = rememberCoroutineScope()
-    val recordings by viewModel.calls.observeAsState(emptyList())
+    // val recordings by viewModel.calls.observeAsState(emptyList())
+    val recordings = appDatabase.callRecordingsDao().list().collectAsState(initial = emptyList())
 
     PermissionGuard(
         Manifest.permission.PROCESS_OUTGOING_CALLS,
@@ -123,9 +117,9 @@ fun MainScreen(
                 modifier = Modifier.padding(innerPadding),
                 color = MaterialTheme.colors.background
             ) {
-                CallList(calls = recordings) { _, call ->
+                CallList(calls = recordings.value) { _, call ->
                     snackbarCoroutineScope.launch {
-                        navController.navigate("recording/${call.id}")
+//                        navController.navigate("recording/${call.id}")
                     }
                 }
             }

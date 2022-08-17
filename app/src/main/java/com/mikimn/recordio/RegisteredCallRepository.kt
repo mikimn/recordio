@@ -7,6 +7,7 @@ import androidx.room.Query
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import java.time.Duration
+import java.time.temporal.Temporal
 
 @Dao
 interface RegisteredCallDao {
@@ -38,14 +39,12 @@ class RegisteredCallsRepository(private val dao: RegisteredCallDao) {
 
     suspend fun delete(callRecording: RegisteredCall) = dao.delete(callRecording)
 
-    // TODO Add duration support
-    suspend fun insert(number: String, type: CallType) {
+    suspend fun insert(number: String, type: CallType, startTime: Temporal, endTime: Temporal) {
         val recording = RegisteredCall(
             id = 0, // Auto-generate
             source = number,
             callType = type,
-            // TODO Replace with real implementation
-            duration = Duration.ofSeconds(10)
+            duration = Duration.between(startTime, endTime)
         )
         dao.insert(recording)
     }
